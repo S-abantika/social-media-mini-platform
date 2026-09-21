@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }) => {
   }, [logout]);
 
   const login = async (identifier, password) => {
-    const res = await authService.login({ identifier, password });
+    const res = await authService.login({ identifier, email: identifier, password });
     if (res.success && res.data) {
       const { user: loggedInUser, token: authToken } = res.data;
       localStorage.setItem('connectly_token', authToken);

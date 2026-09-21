@@ -69,18 +69,20 @@ const register = async (req, res, next) => {
 // @access  Public
 const login = async (req, res, next) => {
   try {
-    const { identifier, password } = req.body;
+    const { identifier, email, username, password } = req.body;
+    const loginId = identifier || email || username;
 
-    if (!identifier || !password) {
+    if (!loginId || !password) {
       return res.status(400).json({
         success: false,
         message: 'Please provide an email or username and password.'
       });
     }
 
-    const query = identifier.includes('@')
-      ? { email: identifier.toLowerCase().trim() }
-      : { username: identifier.toLowerCase().trim() };
+    const trimmedId = String(loginId).trim();
+    const query = trimmedId.includes('@')
+      ? { email: trimmedId.toLowerCase() }
+      : { username: trimmedId.toLowerCase() };
 
     const user = await User.findOne(query).select('+password');
 

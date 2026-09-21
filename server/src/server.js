@@ -37,7 +37,20 @@ server.listen(PORT, () => {
   console.log(`=========================================`);
 });
 
-// Handle unhandled promise rejections
+// Server error handler
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[ServerError] Port ${PORT} is already in use.`);
+  } else {
+    console.error('[ServerError]:', err.message);
+  }
+});
+
+// Handle uncaught exceptions and unhandled promise rejections
+process.on('uncaughtException', (err) => {
+  console.error(`[UncaughtException] ${err.stack || err.message}`);
+});
+
 process.on('unhandledRejection', (err) => {
-  console.error(`[UnhandledRejection] ${err.message}`);
+  console.error(`[UnhandledRejection] ${err.stack || err.message}`);
 });
