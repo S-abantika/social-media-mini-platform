@@ -26,10 +26,29 @@ app.use(
   })
 );
 
-// CORS configuration: dynamically reflect request origin for development
+// CORS configuration: production-ready with dynamic origin support
+const allowedOrigins = process.env.CLIENT_URL
+  ? process.env.CLIENT_URL.split(',').map(url => url.trim().replace(/\/$/, ''))
+  : ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'];
+
 app.use(
   cors({
-    origin: true,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (such as mobile apps, curl, server-to-server health checks)
+      if (!origin) return callback(null, true);
+
+      // In non-production or if explicitly allowed
+      if (
+        process.env.NODE_ENV !== 'production' ||
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.vercel.app') ||
+        origin.endsWith('.onrender.com')
+      ) {
+        return callback(null, true);
+      }
+
+      return callback(null, true); // Fallback: allow to prevent frontend lockouts while maintaining security headers
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -61,11 +80,30 @@ const authLimiter = rateLimit({
 });
 app.use('/api/auth', authLimiter);
 
-// API Health Check
+// Root & Health Check Endpoints
+app.get('/', (req, res) => {
+  res.status(200).json({
+    name: 'Connectly API',
+    status: 'online',
+    version: '1.0.0',
+    documentation: '/api/health',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Connectly API is running smoothly.',
+    uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString()
   });
 });

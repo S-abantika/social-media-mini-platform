@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Follow = require('../models/Follow');
 const { getPagination, formatPaginationResponse } = require('../utils/pagination');
+const { isCloudinaryConfigured, uploadToCloudinary } = require('../services/cloudinaryService');
 
 // @desc    Get public profile by username
 // @route   GET /api/users/profile/:username
@@ -89,7 +90,15 @@ const uploadAvatar = async (req, res, next) => {
       });
     }
 
-    const avatarUrl = `/uploads/${req.file.filename}`;
+    let avatarUrl = `/uploads/${req.file.filename}`;
+
+    if (isCloudinaryConfigured()) {
+      const cloudUrl = await uploadToCloudinary(req.file.path, 'connectly/avatars');
+      if (cloudUrl) {
+        avatarUrl = cloudUrl;
+      }
+    }
+
     const user = await User.findByIdAndUpdate(
       req.user._id,
       { profileImage: avatarUrl },

@@ -5,6 +5,7 @@ const Comment = require('../models/Comment');
 const SavedPost = require('../models/SavedPost');
 const { createNotification } = require('../services/notificationService');
 const { getPagination, formatPaginationResponse } = require('../utils/pagination');
+const { isCloudinaryConfigured, uploadToCloudinary } = require('../services/cloudinaryService');
 
 // Helper to attach isLiked & isSaved flags for current user
 const enrichPostsWithUserFlags = async (posts, userId) => {
@@ -169,6 +170,12 @@ const createPost = async (req, res, next) => {
 
     if (req.file) {
       imageUrl = `/uploads/${req.file.filename}`;
+      if (isCloudinaryConfigured()) {
+        const cloudUrl = await uploadToCloudinary(req.file.path, 'connectly/posts');
+        if (cloudUrl) {
+          imageUrl = cloudUrl;
+        }
+      }
     } else if (req.body.image) {
       imageUrl = req.body.image;
     }
@@ -244,7 +251,14 @@ const updatePost = async (req, res, next) => {
     }
 
     if (req.file) {
-      post.image = `/uploads/${req.file.filename}`;
+      let postImage = `/uploads/${req.file.filename}`;
+      if (isCloudinaryConfigured()) {
+        const cloudUrl = await uploadToCloudinary(req.file.path, 'connectly/posts');
+        if (cloudUrl) {
+          postImage = cloudUrl;
+        }
+      }
+      post.image = postImage;
     }
 
     await post.save();
