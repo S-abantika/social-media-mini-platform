@@ -247,12 +247,33 @@ const sampleComments = [
   'Love seeing the campus innovation happening here.',
   'Solid recommendation, implemented this in our project last semester and it was a game changer.'
 ];
+const dns = require('dns');
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
+} catch (e) {}
+
+const formatMongoUri = (rawUri) => {
+  if (!rawUri) return 'mongodb://127.0.0.1:27017/connectly';
+  let uri = rawUri.trim();
+  if ((uri.startsWith('"') && uri.endsWith('"')) || (uri.startsWith("'") && uri.endsWith("'"))) {
+    uri = uri.slice(1, -1).trim();
+  }
+  if (uri.includes('.mongodb.net/?')) {
+    uri = uri.replace('.mongodb.net/?', '.mongodb.net/connectly?');
+  } else if (uri.endsWith('.mongodb.net/')) {
+    uri = uri + 'connectly';
+  } else if (uri.endsWith('.mongodb.net')) {
+    uri = uri + '/connectly';
+  }
+  return uri;
+};
 
 const seedDatabase = async () => {
   try {
-    const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/connectly';
-    console.log(`Connecting to MongoDB at: ${mongoUri}`);
-    await mongoose.connect(mongoUri);
+    const rawUri = process.env.MONGO_URI || process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/connectly';
+    const mongoUri = formatMongoUri(rawUri);
+    console.log(`Connecting to MongoDB at: ${mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@')}`);
+    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 15000 });
 
     console.log('Clearing existing collections...');
     await Promise.all([
