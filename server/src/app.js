@@ -63,8 +63,6 @@ const corsOptions = {
 // Apply CORS before all routes and middleware that may respond
 app.use(cors(corsOptions));
 
-// Explicitly handle preflight requests
-app.options('*', cors(corsOptions));
 
 // Security Headers
 app.use(
