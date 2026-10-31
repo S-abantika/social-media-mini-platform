@@ -1,3 +1,4 @@
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -19,39 +20,58 @@ const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
 const app = express();
 
+// Allowed frontend origins
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'https://connectly-social-media-platform-2ox.vercel.app'
+];
+
+// CORS configuration
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests without an Origin header
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(
+      new Error(`CORS blocked: ${origin}`)
+    );
+  },
+  credentials: true,
+  methods: [
+    'GET',
+    'POST',
+    'PUT',
+    'PATCH',
+    'DELETE',
+    'OPTIONS'
+  ],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization'
+  ],
+  optionsSuccessStatus: 204
+};
+
+// Apply CORS before all routes and middleware that may respond
+app.use(cors(corsOptions));
+
+// Explicitly handle preflight requests
+app.options('*', cors(corsOptions));
+
 // Security Headers
 app.use(
   helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' }
-  })
-);
-
-// CORS configuration: production-ready with dynamic origin support
-const allowedOrigins = process.env.CLIENT_URL
-  ? process.env.CLIENT_URL.split(',').map(url => url.trim().replace(/\/$/, ''))
-  : ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'];
-
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (such as mobile apps, curl, server-to-server health checks)
-      if (!origin) return callback(null, true);
-
-      // In non-production or if explicitly allowed
-      if (
-        process.env.NODE_ENV !== 'production' ||
-        allowedOrigins.includes(origin) ||
-        origin.endsWith('.vercel.app') ||
-        origin.endsWith('.onrender.com')
-      ) {
-        return callback(null, true);
-      }
-
-      return callback(null, true); // Fallback: allow to prevent frontend lockouts while maintaining security headers
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    crossOriginResourcePolicy: {
+      policy: 'cross-origin'
+    }
   })
 );
 
@@ -65,12 +85,15 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Static files for uploaded media
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use(
+  '/uploads',
+  express.static(path.join(__dirname, '../uploads'))
+);
 
 // Rate Limiting for Auth Endpoints
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -78,9 +101,10 @@ const authLimiter = rateLimit({
     message: 'Too many authentication attempts. Please try again in 15 minutes.'
   }
 });
+
 app.use('/api/auth', authLimiter);
 
-// Root & Health Check Endpoints
+// Root Endpoint
 app.get('/', (req, res) => {
   res.status(200).json({
     name: 'Connectly API',
@@ -91,6 +115,7 @@ app.get('/', (req, res) => {
   });
 });
 
+// Health Check
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
